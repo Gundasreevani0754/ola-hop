@@ -2,6 +2,8 @@
 
 import { MotionConfig } from "framer-motion";
 import dynamic from "next/dynamic";
+import { useEffect, useSyncExternalStore } from "react";
+import { upcoming } from "@/lib/sim";
 import { useHop, type Profile } from "@/lib/store";
 import LineHealth from "./LineHealth";
 import Phone from "./Phone";
@@ -13,8 +15,43 @@ const LineMap = dynamic(() => import("./LineMap"), {
   loading: () => <div className="h-full w-full animate-pulse bg-surface" />,
 });
 
+// Screenshot mode for the PRD: /demo#shot-day, #shot-night or #shot-held shows just the phone.
+const subscribeHash = (cb: () => void) => {
+  window.addEventListener("hashchange", cb);
+  return () => window.removeEventListener("hashchange", cb);
+};
+const getShot = () => window.location.hash.match(/^#shot-(day|night|held)$/)?.[1] ?? null;
+
+function prepareShot(shot: string) {
+  // Print-friendly: always light, whatever the system theme.
+  document.documentElement.dataset.theme = "light";
+  const s = useHop.getState();
+  s.endTour();
+  s.setNotified();
+  s.setProfile("woman");
+  s.setNight(shot === "night");
+  if (shot === "held") {
+    const { world, rider, holdSeat } = useHop.getState();
+    const next = upcoming(world, rider.from).find((x) => x.v.seats > 0);
+    if (next) holdSeat(next.v.id, "4729");
+  }
+}
+
 export default function DemoView() {
   const night = useHop((s) => s.world.night);
+  const shot = useSyncExternalStore(subscribeHash, getShot, () => null);
+
+  useEffect(() => {
+    if (shot) prepareShot(shot);
+  }, [shot]);
+
+  if (shot) {
+    return (
+      <div className={`fixed inset-0 z-[2000] overflow-hidden bg-desk p-4 ${night ? "night" : ""}`}>
+        <Phone />
+      </div>
+    );
+  }
 
   return (
     <MotionConfig reducedMotion="user">
