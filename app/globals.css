@@ -1,0 +1,130 @@
+@import "tailwindcss";
+
+/* One calm palette. Green by day, violet for Night Line. No Ola brand colours. */
+:root {
+  --desk: #eceeed;
+  --page: #ffffff;
+  --surface: #f4f6f5;
+  --fg: #121a16;
+  --muted: #66736c;
+  --hair: #e4e8e6;
+  --accent: #0f7a55;
+  --accent-soft: #e6f3ed;
+  --on-accent: #ffffff;
+  --car: #2f6fec;
+  --auto: #d39b00;
+  --bus: #d4561c;
+  --danger: #d23b3b;
+  --violet: #6d3fe0;
+  --violet-soft: #efe9fd;
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --desk: #0a0d0c;
+    --page: #121816;
+    --surface: #1a2320;
+    --fg: #e9efec;
+    --muted: #9aa8a1;
+    --hair: #26302c;
+    --accent: #3cc88f;
+    --accent-soft: #17312a;
+    --on-accent: #06130d;
+    --car: #79a2ff;
+    --auto: #f2bd3a;
+    --bus: #ff8a55;
+    --danger: #ff6b6b;
+    --violet: #a88bff;
+    --violet-soft: #261d3d;
+    color-scheme: dark;
+  }
+}
+
+:root[data-theme="dark"] {
+  --desk: #0a0d0c;
+  --page: #121816;
+  --surface: #1a2320;
+  --fg: #e9efec;
+  --muted: #9aa8a1;
+  --hair: #26302c;
+  --accent: #3cc88f;
+  --accent-soft: #17312a;
+  --on-accent: #06130d;
+  --car: #79a2ff;
+  --auto: #f2bd3a;
+  --bus: #ff8a55;
+  --danger: #ff6b6b;
+  --violet: #a88bff;
+  --violet-soft: #261d3d;
+  color-scheme: dark;
+}
+
+/* Night Line: anything inside .night picks up the violet accent. */
+.night {
+  --accent: var(--violet);
+  --accent-soft: var(--violet-soft);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .night {
+    --on-accent: #140b2b;
+  }
+}
+:root[data-theme="dark"] .night {
+  --on-accent: #140b2b;
+}
+
+@theme inline {
+  --color-desk: var(--desk);
+  --color-page: var(--page);
+  --color-surface: var(--surface);
+  --color-fg: var(--fg);
+  --color-muted: var(--muted);
+  --color-hair: var(--hair);
+  --color-accent: var(--accent);
+  --color-accent-soft: var(--accent-soft);
+  --color-on-accent: var(--on-accent);
+  --color-car: var(--car);
+  --color-auto: var(--auto);
+  --color-bus: var(--bus);
+  --color-danger: var(--danger);
+  --color-violet: var(--violet);
+  --font-display: var(--font-bricolage), "Segoe UI", system-ui, sans-serif;
+  --font-sans: var(--font-figtree), "Segoe UI", system-ui, sans-serif;
+}
+
+html,
+body {
+  background: var(--desk);
+  color: var(--fg);
+}
+
+body {
+  font-size: 15px;
+}
+
+:focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+.label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+}
