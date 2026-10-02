@@ -142,12 +142,12 @@ body {
   --muted: #9aa8a1;
 }
 .route-base {
-  stroke: var(--muted);
-  stroke-opacity: 0.35;
+  stroke: var(--accent);
+  stroke-opacity: 0.3;
 }
 .route-mine {
   stroke: var(--accent);
-  stroke-opacity: 0.45;
+  stroke-opacity: 0.7;
 }
 .route-done {
   stroke: var(--accent);
@@ -164,9 +164,25 @@ body {
   background: var(--page);
   border: 3px solid var(--fg);
 }
-.stop-dot.me {
+.stop-dot.from,
+.stop-dot.to {
   border-color: var(--accent);
   box-shadow: 0 0 0 5px var(--accent-soft);
+}
+.stop-dot.to {
+  background: var(--accent);
+}
+.stop-dot.off {
+  border-color: var(--muted);
+}
+.net-line {
+  stroke: var(--muted);
+  stroke-opacity: 0.4;
+}
+.net-stop {
+  stroke: var(--muted);
+  fill: var(--page);
+  fill-opacity: 1;
 }
 .stop-name {
   position: absolute;
@@ -187,8 +203,14 @@ body {
 .stop-name.below {
   top: 18px;
 }
-.stop-name.me {
+.stop-name.from,
+.stop-name.to {
   font-weight: 800;
+  font-size: 13px;
+}
+.stop-name.off {
+  color: var(--muted);
+  font-weight: 500;
 }
 .veh-marker {
   display: flex;

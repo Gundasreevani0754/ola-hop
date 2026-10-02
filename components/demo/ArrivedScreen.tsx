@@ -1,11 +1,12 @@
 "use client";
 
-import { LINE, STOPS } from "@/lib/line";
+import { getRoute } from "@/lib/network";
 import { useHop } from "@/lib/store";
 import { btn } from "./ui";
 
 export default function ArrivedScreen() {
   const night = useHop((s) => s.world.night);
+  const routeKey = useHop((s) => s.world.routeKey);
   const rider = useHop((s) => s.rider);
   const rate = useHop((s) => s.rate);
   const markHomeSafe = useHop((s) => s.markHomeSafe);
@@ -21,7 +22,7 @@ export default function ArrivedScreen() {
       <div>
         <p className="label">Arrived</p>
         <h1 className="mt-1.5 font-display text-[26px] font-extrabold leading-[1.1] tracking-tight">
-          You&apos;re at {STOPS[LINE.destStop].name}
+          You&apos;re at {getRoute(routeKey).stops[rider.to].name}
         </h1>
         <p className="mt-1.5 text-sm text-muted">
           ₹{paid} paid by UPI{done.credit > 0 && ` (₹${done.credit} credit used)`} · waited {waited}

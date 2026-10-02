@@ -1,5 +1,5 @@
-import { LINE, STOPS } from "./line";
-import { SIM_MIN_PER_REAL_SEC, TYPES } from "./sim";
+import { getRoute } from "./network";
+import { CRUISE_KM_PER_MIN, DWELL_MIN, fareFor, SIM_MIN_PER_REAL_SEC } from "./sim";
 import type { Filter, Vehicle, VehicleType, World } from "./types";
 
 export type RiderView = "home" | "held" | "trip" | "arrived";
@@ -8,9 +8,11 @@ export type RiderView = "home" | "held" | "trip" | "arrived";
 export const HOLD_AFTER_ARRIVAL_MIN = 1;
 /** While the vehicle waits at the stop, run the clock in real time so the 60 s is honest. */
 export const REAL_TIME_SPEED = 1 / 60;
-/** Trips are fast-forwarded so the 8.7 km ride takes about half a minute. */
-export const TRIP_SPEED = 1.2;
-export const TRIP_FAST_FORWARD = Math.round(TRIP_SPEED / SIM_MIN_PER_REAL_SEC);
+/** Trips are fast-forwarded so any ride takes about half a minute to watch. */
+export function tripSpeed(km: number, stops: number): number {
+  const minutes = km / CRUISE_KM_PER_MIN + stops * DWELL_MIN;
+  return Math.max(0.6, minutes / 30);
+}
 /** "Skip ahead" while waiting for a held vehicle. */
 export const SKIP_SPEED = 1.2;
 export const FREE_MISSES_PER_WEEK = 2;
@@ -50,6 +52,9 @@ export interface RiderState {
   missesThisWeek: number;
   /** Rupees of credit from a vehicle that arrived full, used on the next ride. */
   credit: number;
+  /** Boarding and drop-off stop indices on the world's route. */
+  from: number;
+  to: number;
 }
 
 export const initialRider: RiderState = {
@@ -62,6 +67,8 @@ export const initialRider: RiderState = {
   homeSafe: false,
   missesThisWeek: 0,
   credit: 0,
+  from: 2,
+  to: 5,
 };
 
 /** Credit given when a held seat arrives full. */
@@ -82,10 +89,10 @@ export function holdSecondsLeft(w: World, hold: Hold): number | null {
   return Math.max(0, Math.ceil((HOLD_AFTER_ARRIVAL_MIN - (w.t - hold.arrivedAt)) * 60));
 }
 
-/** Share of the Agara to Marathahalli ride done, 0 to 1. */
-export function tripProgress(w: World, trip: Trip): number {
+/** Share of the ride done, 0 to 1. */
+export function tripProgress(w: World, r: RiderState, trip: Trip): number {
   const v = findVehicle(w, trip.vehicleId);
-  const destKm = STOPS[LINE.destStop].km;
+  const destKm = getRoute(w.routeKey).stops[r.to].km;
   if (!v) return 1;
   return Math.min(1, Math.max(0, (v.posKm - trip.startKm) / (destKm - trip.startKm)));
 }
@@ -116,7 +123,7 @@ export function advanceRider(w: World, r: RiderState, keepHold = false): RiderSt
       };
     }
 
-    if (hold.arrivedAt === null && v.lastStop >= LINE.riderStop) {
+    if (hold.arrivedAt === null && v.lastStop >= r.from) {
       // Vehicle reached the rider's stop: keep it there for up to 60 s.
       const world = updateVehicle(w, v.id, (x) => ({
         holdLeft: Math.max(x.holdLeft, HOLD_AFTER_ARRIVAL_MIN - x.dwellLeft),
@@ -148,8 +155,10 @@ export function advanceRider(w: World, r: RiderState, keepHold = false): RiderSt
 
   if (r.view === "trip" && r.trip) {
     const v = findVehicle(w, r.trip.vehicleId);
-    if (!v || v.lastStop >= LINE.destStop) {
+    if (!v || v.lastStop >= r.to) {
       const snap = v ?? r.trip.snapshot;
+      const stops = getRoute(w.routeKey).stops;
+      const fare = fareFor(snap.type, stops[r.to].km - stops[r.from].km);
       return {
         world: w,
         rider: {
@@ -157,11 +166,11 @@ export function advanceRider(w: World, r: RiderState, keepHold = false): RiderSt
           view: "arrived",
           done: {
             type: snap.type,
-            fare: TYPES[snap.type].fare,
-            credit: Math.min(r.credit, TYPES[snap.type].fare),
+            fare,
+            credit: Math.min(r.credit, fare),
             waited: r.trip.waited,
           },
-          credit: Math.max(0, r.credit - TYPES[snap.type].fare),
+          credit: Math.max(0, r.credit - fare),
           rating: 0,
           homeSafe: false,
         },

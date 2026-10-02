@@ -1,4 +1,4 @@
-import { LINE } from "./line";
+import { DEFAULT_TRIP } from "./network";
 import { upcoming } from "./sim";
 import { useHop, type HopState } from "./store";
 
@@ -22,11 +22,11 @@ export const TOUR: TourStep[] = [
     title: "One tap holds her seat",
     body: "She gets a 4-digit boarding code and a police-verified driver. The seat is kept until 60 seconds after the auto reaches the stop.",
     enter: (s) => {
-      // Restart the line so Lakshmi's auto is the one a minute away, whatever happened before.
-      s.resetLine();
-      const { world } = useHop.getState();
-      const next = upcoming(world, LINE.riderStop, "all").find((x) => x.v.seats > 0);
-      if (next) useHop.getState().holdSeat(next.v.id, "4729");
+      // Restart on L3 so Lakshmi's auto is the one a minute away, whatever happened before.
+      s.selectTrip(DEFAULT_TRIP.from, DEFAULT_TRIP.to);
+      const { world, rider, holdSeat } = useHop.getState();
+      const next = upcoming(world, rider.from, "all").find((x) => x.v.seats > 0);
+      if (next) holdSeat(next.v.id, "4729");
     },
   },
   {
@@ -54,12 +54,15 @@ export const TOUR: TourStep[] = [
   },
   {
     title: "After 8 pm: Night Line",
-    body: "The same line switches to Night Line. Women riders and women drivers only, lit and audited stops, every ride shared live with family, and a 'reached home?' check. A vehicle every 8 minutes, no buses.",
-    enter: (s) => s.setNight(true),
+    body: "The same line switches to Night Line: women riders and women drivers only, lit stops, every ride shared live with family, and a 'reached home?' check. It only turns on for women riders, from the profile checked at sign-up. Switch the demo rider to Arjun and it locks.",
+    enter: (s) => {
+      s.setProfile("woman");
+      useHop.getState().setNight(true);
+    },
   },
   {
     title: "Your turn",
-    body: "That is the core loop. Try it yourself: switch vehicle types, hold a seat, or see what happens when a vehicle arrives full.",
+    body: "Pick any From and To across 7 lines in Bengaluru, switch vehicle types, hold a seat, or see what happens when a vehicle arrives full. The pilot runs L3 only; the other lines show how a city network could look.",
     enter: (s) => s.setNight(false),
   },
 ];

@@ -3,8 +3,8 @@
 import { AnimatePresence, motion } from "framer-motion";
 import { useEffect, useState } from "react";
 import Wordmark from "@/components/Wordmark";
-import { LINE, STOPS } from "@/lib/line";
-import { displayMin, formatClock, TYPES, upcoming } from "@/lib/sim";
+import { getRoute } from "@/lib/network";
+import { displayMin, fareFor, formatClock, TYPES, upcoming } from "@/lib/sim";
 import { useHop } from "@/lib/store";
 import ArrivedScreen from "./ArrivedScreen";
 import HeldScreen from "./HeldScreen";
@@ -59,12 +59,15 @@ function LeaveNow() {
       const s = useHop.getState();
       setNotified();
       if (s.rider.view !== "home") return;
-      const next = upcoming(s.world, LINE.riderStop, s.rider.filter).find((x) => x.v.seats > 0);
+      const next = upcoming(s.world, s.rider.from, s.rider.filter).find((x) => x.v.seats > 0);
       if (!next) return;
-      const code = s.world.night ? LINE.nightCode : LINE.code;
+      const route = getRoute(s.world.routeKey);
+      const from = route.stops[s.rider.from];
+      const to = route.stops[s.rider.to];
+      const code = s.world.night ? route.nightCode : route.code;
       setText({
-        title: `${code} ${TYPES[next.v.type].label.toLowerCase()} at ${STOPS[LINE.riderStop].name} in ${Math.max(1, displayMin(next.eta))} min`,
-        body: `${plural(next.v.seats, "seat")} free · ₹${TYPES[next.v.type].fare} to ${STOPS[LINE.destStop].name}. Leave now.`,
+        title: `${code} ${TYPES[next.v.type].label.toLowerCase()} at ${from.name} in ${Math.max(1, displayMin(next.eta))} min`,
+        body: `${plural(next.v.seats, "seat")} free · ₹${fareFor(next.v.type, to.km - from.km)} to ${to.name}. Leave now.`,
       });
     }, 2500);
     return () => window.clearTimeout(show);

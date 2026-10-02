@@ -1,32 +1,48 @@
 "use client";
 
-import { LINE, STOPS } from "@/lib/line";
+import { getRoute } from "@/lib/network";
 import { upcoming } from "@/lib/sim";
 import { useHop } from "@/lib/store";
 
-/** Silk Board, HSR and Agara in a row, with vehicles sliding towards the rider. */
+/** The rider's stop and up to two stops before it, with vehicles sliding towards the rider. */
 export default function ApproachStrip() {
   const world = useHop((s) => s.world);
   const filter = useHop((s) => s.rider.filter);
-  const riderKm = STOPS[LINE.riderStop].km;
-  const span = riderKm + 0.5;
-  const x = (km: number) => Math.max(0, Math.min(100, (km / span) * 100));
-  const stops = STOPS.slice(0, LINE.riderStop + 1);
-  const vehicles = upcoming(world, LINE.riderStop, filter).map((u) => u.v);
+  const from = useHop((s) => s.rider.from);
+  const route = getRoute(world.routeKey);
+  const fromKm = route.stops[from].km;
+  const shown = route.stops.slice(Math.max(0, from - 2), from + 1);
+  // At a route's first stop, vehicles come from the depot just behind it.
+  const startKm = from === 0 ? -1.2 : shown[0].km;
+  const span = fromKm + 0.5 - startKm;
+  const x = (km: number) => Math.max(0, Math.min(100, ((km - startKm) / span) * 100));
+  const vehicles = upcoming(world, from, filter)
+    .map((u) => u.v)
+    .filter((v) => v.posKm >= startKm - 0.3);
+
+  // Skip a label if it would crowd the one before it; the rider's stop always shows.
+  const labels = shown.reduce<{ show: boolean[]; last: number }>(
+    (acc, s, i) => {
+      const pos = x(s.km);
+      const show = i === shown.length - 1 || pos - acc.last > 30;
+      return { show: [...acc.show, show], last: show ? pos : acc.last };
+    },
+    { show: [], last: -100 },
+  ).show;
 
   return (
     <div
       className="relative mx-1.5 h-14"
       role="img"
-      aria-label={`${vehicles.length} vehicles on the way to ${STOPS[LINE.riderStop].name}`}
+      aria-label={`${vehicles.length} vehicles on the way to ${route.stops[from].name}`}
     >
       <div className="absolute inset-x-0 top-3.5 h-1 rounded bg-hair" />
-      <div
-        className="absolute left-0 top-3.5 h-1 rounded bg-accent opacity-25"
-        style={{ width: `${x(riderKm)}%` }}
-      />
-      {stops.map((s, i) => {
-        const me = i === LINE.riderStop;
+      <div className="absolute left-0 top-3.5 h-1 rounded bg-accent opacity-25" style={{ width: `${x(fromKm)}%` }} />
+      {from === 0 && (
+        <span className="absolute left-0 top-8 text-[11px] text-muted">from depot</span>
+      )}
+      {shown.map((s, i) => {
+        const me = i === shown.length - 1;
         return (
           <div key={s.id}>
             <span
@@ -37,14 +53,17 @@ export default function ApproachStrip() {
               }`}
               style={{ left: `${x(s.km)}%` }}
             />
-            <span
-              className={`absolute top-8 whitespace-nowrap text-[11px] ${
-                me ? "font-bold text-fg" : "text-muted"
-              } ${i === 0 ? "-ml-1.5" : "-translate-x-1/2"}`}
-              style={{ left: `${x(s.km)}%` }}
-            >
-              {me ? `${s.name} · you` : s.name}
-            </span>
+            {labels[i] && (
+              <span
+                // The rider's label hugs the right edge so long names never spill out.
+                className={`absolute top-8 whitespace-nowrap text-[11px] ${
+                  me ? "-right-1.5 font-bold text-fg" : "text-muted"
+                } ${!me && x(s.km) < 8 ? "-ml-1.5" : !me ? "-translate-x-1/2" : ""}`}
+                style={me ? undefined : { left: `${x(s.km)}%` }}
+              >
+                {me ? `${s.name} · you` : s.name}
+              </span>
+            )}
           </div>
         );
       })}

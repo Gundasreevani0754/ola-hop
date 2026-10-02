@@ -59,6 +59,10 @@ export interface Metrics {
 }
 
 export interface World {
+  /** Which route and direction this world runs (see lib/network.ts). */
+  routeKey: string;
+  /** The stop the rider waits at, used to place the first vehicle. */
+  riderStop: number;
   night: boolean;
   /** Simulated minutes since midnight. */
   t: number;

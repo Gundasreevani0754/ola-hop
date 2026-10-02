@@ -1,18 +1,18 @@
 "use client";
 
 import { create } from "zustand";
-import { LINE, STOPS } from "./line";
+import { DEFAULT_TRIP, findTrip, getRoute } from "./network";
 import {
   advanceRider,
   findVehicle,
   FULL_CREDIT,
   initialRider,
   SKIP_SPEED,
-  TRIP_SPEED,
+  tripSpeed,
   updateVehicle,
   type RiderState,
 } from "./rider";
-import { createWorld, SIM_MIN_PER_REAL_SEC, step, TYPES, upcoming } from "./sim";
+import { createWorld, fareFor, SIM_MIN_PER_REAL_SEC, step, TYPES, upcoming } from "./sim";
 import { TOUR } from "./tour";
 import type { Filter, World } from "./types";
 
@@ -21,9 +21,13 @@ export interface Toast {
   text: string;
 }
 
+/** Who is logged in. In the product this comes from the rider's profile, checked once at sign-up. */
+export type Profile = "woman" | "man";
+
 export interface HopState {
   world: World;
   rider: RiderState;
+  profile: Profile;
   /** Simulated minutes per real second. Changes while waiting at the stop or riding. */
   speed: number;
   toast: Toast | null;
@@ -32,7 +36,9 @@ export interface HopState {
   tour: { active: boolean; step: number };
 
   tick: (realMs: number) => void;
+  selectTrip: (from: string, to: string) => void;
   setNight: (night: boolean) => void;
+  setProfile: (profile: Profile) => void;
   showToast: (text: string) => void;
   clearToast: (id: number) => void;
   setNotified: () => void;
@@ -47,7 +53,7 @@ export interface HopState {
   markHomeSafe: () => void;
   finishRide: () => void;
 
-  /** Restart the line at 8:24 am (or 9:40 pm), keeping the rider's filter. */
+  /** Restart the route at 8:24 am (or 9:40 pm), keeping the rider's choices. */
   resetLine: () => void;
   startTour: () => void;
   nextTourStep: () => void;
@@ -57,13 +63,35 @@ export interface HopState {
 // Keep each step small so fast-forwarded trips still serve every stop.
 const MAX_STEP_MIN = 0.1;
 let toastId = 0;
+const toastOf = (text: string): Toast => ({ id: ++toastId, text });
 
 const randomCode = () => String(Math.floor(1000 + Math.random() * 9000));
 
+/** A fresh world and rider for a trip between two places. */
+function startTrip(from: string, to: string, night: boolean, keep: Partial<RiderState> = {}) {
+  const trip = findTrip(from, to) ?? findTrip(DEFAULT_TRIP.from, DEFAULT_TRIP.to)!;
+  return {
+    world: createWorld(night, trip.route.key, trip.from),
+    rider: { ...initialRider, ...keep, from: trip.from, to: trip.to },
+    speed: SIM_MIN_PER_REAL_SEC,
+  };
+}
+
+/** The rider's current boarding and drop-off places. */
+export function tripPlaces(s: Pick<HopState, "world" | "rider">) {
+  const stops = getRoute(s.world.routeKey).stops;
+  return { from: stops[s.rider.from].name, to: stops[s.rider.to].name };
+}
+
+const keepChoices = (r: RiderState): Partial<RiderState> => ({
+  filter: r.filter,
+  credit: r.credit,
+  missesThisWeek: r.missesThisWeek,
+});
+
 export const useHop = create<HopState>()((set, get) => ({
-  world: createWorld(false),
-  rider: initialRider,
-  speed: SIM_MIN_PER_REAL_SEC,
+  ...startTrip(DEFAULT_TRIP.from, DEFAULT_TRIP.to, false),
+  profile: "woman",
   toast: null,
   notified: false,
   tour: { active: true, step: 0 },
@@ -87,26 +115,40 @@ export const useHop = create<HopState>()((set, get) => ({
       if (out.speed !== undefined) speed = out.speed;
     }
 
-    set({
-      world: w,
-      rider: r,
-      speed,
-      ...(toast ? { toast: { id: ++toastId, text: toast } } : {}),
-    });
+    set({ world: w, rider: r, speed, ...(toast ? { toast: toastOf(toast) } : {}) });
   },
 
+  selectTrip: (from, to) =>
+    set((s) => {
+      if (!findTrip(from, to)) return {};
+      return startTrip(from, to, s.world.night, keepChoices(s.rider));
+    }),
+
   setNight: (night) =>
-    set((s) => ({
-      world: createWorld(night),
-      rider: {
-        ...initialRider,
-        filter: night && s.rider.filter === "bus" ? "all" : s.rider.filter,
-        missesThisWeek: s.rider.missesThisWeek,
-        credit: s.rider.credit,
-      },
-      speed: SIM_MIN_PER_REAL_SEC,
-    })),
-  showToast: (text) => set({ toast: { id: ++toastId, text } }),
+    set((s) => {
+      if (night && s.profile !== "woman") {
+        return { toast: toastOf("Night Line is for women riders only.") };
+      }
+      const { from, to } = tripPlaces(s);
+      const keep = keepChoices(s.rider);
+      if (night && keep.filter === "bus") keep.filter = "all";
+      return startTrip(from, to, night, keep);
+    }),
+
+  setProfile: (profile) =>
+    set((s) => {
+      if (profile === "man" && s.world.night) {
+        const { from, to } = tripPlaces(s);
+        return {
+          profile,
+          ...startTrip(from, to, false, keepChoices(s.rider)),
+          toast: toastOf("Night Line is for women riders, so Arjun sees the regular line."),
+        };
+      }
+      return { profile };
+    }),
+
+  showToast: (text) => set({ toast: toastOf(text) }),
   clearToast: (id) => set((s) => (s.toast?.id === id ? { toast: null } : {})),
   setNotified: () => set({ notified: true }),
 
@@ -144,7 +186,7 @@ export const useHop = create<HopState>()((set, get) => ({
         })),
         rider: { ...s.rider, view: "home", hold: null },
         speed: SIM_MIN_PER_REAL_SEC,
-        toast: { id: ++toastId, text: "Seat released" },
+        toast: toastOf("Seat released"),
       };
     }),
 
@@ -156,7 +198,7 @@ export const useHop = create<HopState>()((set, get) => ({
     const s = get();
     const hold = s.rider.hold;
     if (!hold) return;
-    const next = upcoming(s.world, LINE.riderStop, s.rider.filter).find(
+    const next = upcoming(s.world, s.rider.from, s.rider.filter).find(
       (x) => x.v.id !== hold.vehicleId && x.v.seats > 0,
     );
     set({
@@ -180,6 +222,8 @@ export const useHop = create<HopState>()((set, get) => ({
       if (!hold || hold.arrivedAt === null) return {};
       const v = findVehicle(s.world, hold.vehicleId);
       if (!v) return {};
+      const stops = getRoute(s.world.routeKey).stops;
+      const km = stops[s.rider.to].km - stops[s.rider.from].km;
       const waited = Math.max(0, hold.arrivedAt - hold.heldAt);
       let world = updateVehicle(s.world, v.id, () => ({ holdLeft: 0 }));
       world = {
@@ -188,7 +232,7 @@ export const useHop = create<HopState>()((set, get) => ({
           ...world.metrics,
           rides: world.metrics.rides + 1,
           ridesWait5: world.metrics.ridesWait5 + (waited <= 5 ? 1 : 0),
-          fares: { ...world.metrics.fares, [v.type]: world.metrics.fares[v.type] + TYPES[v.type].fare },
+          fares: { ...world.metrics.fares, [v.type]: world.metrics.fares[v.type] + fareFor(v.type, km) },
         },
       };
       return {
@@ -197,49 +241,32 @@ export const useHop = create<HopState>()((set, get) => ({
           ...s.rider,
           view: "trip",
           hold: null,
-          trip: {
-            vehicleId: v.id,
-            code: hold.code,
-            startKm: STOPS[LINE.riderStop].km,
-            waited,
-            snapshot: v,
-          },
+          trip: { vehicleId: v.id, code: hold.code, startKm: stops[s.rider.from].km, waited, snapshot: v },
         },
-        speed: TRIP_SPEED,
+        speed: tripSpeed(km, s.rider.to - s.rider.from),
       };
     }),
 
   rate: (stars) => set((s) => ({ rider: { ...s.rider, rating: stars } })),
   markHomeSafe: () =>
-    set((s) => ({
-      rider: { ...s.rider, homeSafe: true },
-      toast: { id: ++toastId, text: "Family notified" },
-    })),
+    set((s) => ({ rider: { ...s.rider, homeSafe: true }, toast: toastOf("Family notified") })),
   finishRide: () =>
     set((s) => ({
-      rider: {
-        ...initialRider,
-        filter: s.rider.filter,
-        missesThisWeek: s.rider.missesThisWeek,
-        credit: s.rider.credit,
-      },
+      rider: { ...initialRider, ...keepChoices(s.rider), from: s.rider.from, to: s.rider.to },
       speed: SIM_MIN_PER_REAL_SEC,
     })),
 
   resetLine: () =>
-    set((s) => ({
-      world: createWorld(s.world.night),
-      rider: { ...initialRider, filter: s.rider.filter, credit: s.rider.credit },
-      speed: SIM_MIN_PER_REAL_SEC,
-    })),
-  startTour: () => {
+    set((s) => {
+      const { from, to } = tripPlaces(s);
+      return startTrip(from, to, s.world.night, keepChoices(s.rider));
+    }),
+  startTour: () =>
     set({
-      world: createWorld(false),
-      rider: initialRider,
-      speed: SIM_MIN_PER_REAL_SEC,
+      ...startTrip(DEFAULT_TRIP.from, DEFAULT_TRIP.to, false),
+      profile: "woman",
       tour: { active: true, step: 0 },
-    });
-  },
+    }),
   nextTourStep: () => {
     const { tour } = get();
     const step = tour.step + 1;

@@ -1,5 +1,6 @@
 "use client";
 
+import { getRoute } from "@/lib/network";
 import { formatClock, median, TYPES } from "@/lib/sim";
 import { useHop } from "@/lib/store";
 import type { VehicleType } from "@/lib/types";
@@ -15,6 +16,8 @@ export default function LineHealth() {
   const autoHours = m.vehicleMinutes.auto / 60;
   const autoPerHour = autoHours > 0 ? Math.round(m.fares.auto / autoHours) : null;
   const since = world.night ? "8 pm" : "6 am";
+  const route = getRoute(world.routeKey);
+  const lineLabel = `${world.night ? route.nightCode : route.code} ${route.stops[0].name} → ${route.stops[route.stops.length - 1].name}`;
   const counts = ORDER.map((t) => [t, world.vehicles.filter((v) => v.type === t).length] as const).filter(
     ([, n]) => n > 0,
   );
@@ -27,7 +30,7 @@ export default function LineHealth() {
           Line health
         </h2>
         <p className="text-xs text-muted">
-          {world.night ? LINE_NIGHT : LINE_DAY} · simulated since {since}
+          {lineLabel} · simulated since {since}
         </p>
       </div>
 
@@ -72,8 +75,6 @@ export default function LineHealth() {
   );
 }
 
-const LINE_DAY = "L3 Silk Board → Marathahalli";
-const LINE_NIGHT = "N3 Night Line";
 
 function Tile({ label, value, note, strong }: { label: string; value: string; note: string; strong?: boolean }) {
   return (

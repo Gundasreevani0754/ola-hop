@@ -1,9 +1,9 @@
 "use client";
 
-import { LINE, STOPS } from "@/lib/line";
-import { displayMin, headwayMin, TYPES, upcoming } from "@/lib/sim";
-import { useHop } from "@/lib/store";
-import type { Filter } from "@/lib/types";
+import { destinationsFrom, findTrip, getRoute, PLACES, tripKm } from "@/lib/network";
+import { displayMin, fareFor, headwayMin, TYPES, upcoming } from "@/lib/sim";
+import { tripPlaces, useHop } from "@/lib/store";
+import type { Filter, VehicleType } from "@/lib/types";
 import ApproachStrip from "./ApproachStrip";
 import { btn, plural, VehicleDot } from "./ui";
 
@@ -17,35 +17,26 @@ const FILTERS: [Filter, string][] = [
 export default function HomeScreen() {
   const world = useHop((s) => s.world);
   const rider = useHop((s) => s.rider);
+  const profile = useHop((s) => s.profile);
   const setFilter = useHop((s) => s.setFilter);
   const holdSeat = useHop((s) => s.holdSeat);
   const setNight = useHop((s) => s.setNight);
 
   const night = world.night;
-  const from = STOPS[LINE.riderStop].name;
-  const to = STOPS[LINE.destStop].name;
-  const list = upcoming(world, LINE.riderStop, rider.filter);
+  const route = getRoute(world.routeKey);
+  const fromStop = route.stops[rider.from];
+  const km = route.stops[rider.to].km - fromStop.km;
+  const list = upcoming(world, rider.from, rider.filter);
   const heroIdx = list.findIndex((x) => x.v.seats > 0 && x.eta <= 15);
   const hero = heroIdx >= 0 ? list[heroIdx] : null;
   const rest = hero ? list.slice(heroIdx + 1, heroIdx + 4) : [];
+  const woman = profile === "woman";
 
   return (
     <div className="flex flex-col gap-[18px]">
       <div>
-        <p className="label">{night ? "Night Line · women only" : "Your morning commute"}</p>
-        <div className="mt-2 flex items-center gap-2.5">
-          <span className="rounded-[7px] bg-accent px-2 py-0.5 font-display text-sm font-extrabold text-on-accent">
-            {night ? LINE.nightCode : LINE.code}
-          </span>
-          <div>
-            <b className="text-base">
-              {from} → {to}
-            </b>
-            <small className="block text-[13px] text-muted">
-              {LINE.name} · every {headwayMin(night)} min · fixed fares
-            </small>
-          </div>
-        </div>
+        <p className="label">{night ? "Night Line · women only" : "Your commute"}</p>
+        <RoutePicker />
       </div>
 
       <ApproachStrip />
@@ -84,7 +75,7 @@ export default function HomeScreen() {
         <div className="flex flex-col gap-3.5 rounded-[20px] bg-accent-soft p-[18px]">
           <div className="flex items-end justify-between">
             <div>
-              <p className="label mb-1.5">Next at {from}</p>
+              <p className="label mb-1.5">Next at {fromStop.name}</p>
               <p className="flex items-center gap-[7px] text-base font-bold">
                 <VehicleDot type={hero.v.type} />
                 {TYPES[hero.v.type].label}
@@ -107,7 +98,7 @@ export default function HomeScreen() {
               <b className="text-fg">{hero.v.seats}</b> {hero.v.seats === 1 ? "seat" : "seats"} free
             </span>
             <span>
-              <b className="text-fg">₹{TYPES[hero.v.type].fare}</b> fixed
+              <b className="text-fg">₹{fareFor(hero.v.type, km)}</b> fixed
             </span>
             <span>{hero.v.plate}</span>
           </div>
@@ -138,7 +129,7 @@ export default function HomeScreen() {
                     {v.seats === 0 ? "Full" : plural(v.seats, "seat")}
                   </span>
                 </span>
-                <span className="tabular text-muted">₹{TYPES[v.type].fare}</span>
+                <span className="tabular text-muted">₹{fareFor(v.type, km)}</span>
                 <span className="tabular w-[52px] text-right font-bold">{displayMin(eta)} min</span>
               </li>
             ))}
@@ -146,9 +137,13 @@ export default function HomeScreen() {
         </div>
       )}
 
-      <label className="flex cursor-pointer items-center justify-between gap-3 rounded-2xl bg-surface px-4 py-3.5">
+      <label
+        className={`flex items-center justify-between gap-3 rounded-2xl bg-surface px-4 py-3.5 ${
+          woman ? "cursor-pointer" : "cursor-not-allowed"
+        }`}
+      >
         <span>
-          <b className="text-[15px]">Night Line</b>
+          <b className="text-[15px]">Night Line{!woman && " · women only"}</b>
           <small className="mt-0.5 block text-xs text-muted">
             8 pm to 6 am · women riders and drivers only
           </small>
@@ -157,20 +152,107 @@ export default function HomeScreen() {
           type="checkbox"
           role="switch"
           checked={night}
+          disabled={!woman}
           onChange={(e) => setNight(e.target.checked)}
           className="peer sr-only"
         />
         <span
           aria-hidden="true"
-          className="relative h-[26px] w-11 flex-none rounded-full bg-hair transition-colors after:absolute after:left-[3px] after:top-[3px] after:h-5 after:w-5 after:rounded-full after:bg-white after:shadow after:transition-[left] peer-checked:bg-accent peer-checked:after:left-[21px] peer-focus-visible:outline peer-focus-visible:outline-3 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-accent"
+          className="relative h-[26px] w-11 flex-none rounded-full bg-hair transition-colors after:absolute after:left-[3px] after:top-[3px] after:h-5 after:w-5 after:rounded-full after:bg-white after:shadow after:transition-[left] peer-checked:bg-accent peer-checked:after:left-[21px] peer-disabled:opacity-40 peer-focus-visible:outline peer-focus-visible:outline-3 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-accent"
         />
       </label>
-      {night && (
+      {!woman ? (
         <p className="-mt-2 px-1 text-[13px] leading-relaxed text-muted">
-          Lit, audited stops only. Every ride is shared live with your family, and we check you
-          reached home.
+          Locked: Night Line is for women riders. Gender comes from your profile, checked once at
+          sign-up, so it can&apos;t be switched on here.
         </p>
+      ) : (
+        night && (
+          <p className="-mt-2 px-1 text-[13px] leading-relaxed text-muted">
+            Lit, audited stops only. Every ride is shared live with your family, and we check you
+            reached home.
+          </p>
+        )
       )}
     </div>
+  );
+}
+
+/** From and To pickers. The line is chosen for you: the shortest direct one. */
+function RoutePicker() {
+  const world = useHop((s) => s.world);
+  const rider = useHop((s) => s.rider);
+  const selectTrip = useHop((s) => s.selectTrip);
+  const { from, to } = tripPlaces({ world, rider });
+  const route = getRoute(world.routeKey);
+  const km = route.stops[rider.to].km - route.stops[rider.from].km;
+  const destinations = destinationsFrom(from);
+  const types: VehicleType[] = world.night ? ["auto", "car"] : ["auto", "car", "bus"];
+
+  // Keep the drop-off if it still works; otherwise go to the farthest place on the line.
+  const changeFrom = (next: string) => {
+    const dests = destinationsFrom(next);
+    const farthest = dests.reduce((a, b) => (tripKm(findTrip(next, b)!) > tripKm(findTrip(next, a)!) ? b : a));
+    selectTrip(next, dests.includes(to) ? to : farthest);
+  };
+
+  return (
+    <div className="mt-2 rounded-2xl bg-surface p-3">
+      <div className="flex items-center gap-2.5">
+        <span className="rounded-[7px] bg-accent px-2 py-0.5 font-display text-sm font-extrabold text-on-accent">
+          {world.night ? route.nightCode : route.code}
+        </span>
+        <span className="text-[13px] text-muted">
+          {route.name} · every {headwayMin(world.night)} min · fixed fares
+        </span>
+      </div>
+      <div className="mt-3 grid grid-cols-[1fr_auto] items-center gap-2">
+        <div className="flex flex-col gap-2">
+          <PlaceSelect label="From" value={from} options={PLACES} onChange={changeFrom} />
+          <PlaceSelect label="To" value={to} options={destinations} onChange={(t) => selectTrip(from, t)} />
+        </div>
+        <button
+          type="button"
+          onClick={() => selectTrip(to, from)}
+          aria-label="Swap From and To"
+          className="flex h-10 w-10 items-center justify-center rounded-xl bg-page text-lg font-bold text-muted hover:text-fg"
+        >
+          ⇅
+        </button>
+      </div>
+      <p className="tabular mt-2.5 text-xs text-muted">
+        {km.toFixed(1)} km · {plural(rider.to - rider.from, "stop")} ·{" "}
+        {types.map((t) => `${TYPES[t].label} ₹${fareFor(t, km)}`).join(" · ")}
+      </p>
+    </div>
+  );
+}
+
+function PlaceSelect({
+  label,
+  value,
+  options,
+  onChange,
+}: {
+  label: string;
+  value: string;
+  options: string[];
+  onChange: (value: string) => void;
+}) {
+  return (
+    <label className="flex items-center gap-2 rounded-xl bg-page px-3 py-2">
+      <span className="w-9 text-xs font-semibold text-muted">{label}</span>
+      <select
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className="min-w-0 flex-1 cursor-pointer bg-transparent text-[15px] font-bold text-fg outline-none"
+      >
+        {options.map((p) => (
+          <option key={p} value={p}>
+            {p}
+          </option>
+        ))}
+      </select>
+    </label>
   );
 }

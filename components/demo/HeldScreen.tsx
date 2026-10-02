@@ -1,14 +1,16 @@
 "use client";
 
-import { LINE, STOPS } from "@/lib/line";
+import { getRoute } from "@/lib/network";
 import { findVehicle, holdSecondsLeft } from "@/lib/rider";
-import { displayMin, etaMin, TYPES } from "@/lib/sim";
+import { displayMin, etaMin, fareFor, TYPES } from "@/lib/sim";
 import { useHop } from "@/lib/store";
 import { btn } from "./ui";
 
 export default function HeldScreen() {
   const world = useHop((s) => s.world);
   const hold = useHop((s) => s.rider.hold);
+  const from = useHop((s) => s.rider.from);
+  const to = useHop((s) => s.rider.to);
   const releaseSeat = useHop((s) => s.releaseSeat);
   const skipAhead = useHop((s) => s.skipAhead);
   const arrivesFull = useHop((s) => s.arrivesFull);
@@ -18,9 +20,12 @@ export default function HeldScreen() {
   if (!hold) return null;
   const v = findVehicle(world, hold.vehicleId) ?? hold.snapshot;
   const label = TYPES[v.type].label;
-  const stop = STOPS[LINE.riderStop].name;
+  const route = getRoute(world.routeKey);
+  const stop = route.stops[from].name;
+  const dest = route.stops[to];
+  const fare = fareFor(v.type, dest.km - route.stops[from].km);
   const arrived = hold.arrivedAt !== null;
-  const eta = etaMin(v, LINE.riderStop) ?? 0;
+  const eta = etaMin(route, v, from) ?? 0;
   const secs = holdSecondsLeft(world, hold);
   const bus = v.type === "bus";
 
@@ -57,11 +62,11 @@ export default function HeldScreen() {
         </p>
         <Row k={bus ? "Operator" : "Driver"} v={bus ? v.driverName : `${v.driverName} ✓`} />
         <Row k="Vehicle" v={v.plate} />
-        <Row k={`Fare to ${STOPS[LINE.destStop].name}`} v={`₹${TYPES[v.type].fare}`} />
+        <Row k={`Fare to ${dest.name}`} v={`₹${fare}`} />
       </div>
 
       <p className="text-[13px] text-muted">
-        Stand at the {LINE.code} sign at {stop} bus stop. Your seat is held until 60 seconds after the
+        Stand at the {world.night ? route.nightCode : route.code} sign at {stop} bus stop. Your seat is held until 60 seconds after the
         vehicle arrives.
       </p>
 

@@ -344,7 +344,9 @@ export default function Home() {
         <div className="flex flex-col items-start justify-between gap-6 rounded-3xl bg-accent p-8 text-on-accent sm:flex-row sm:items-center sm:p-10">
           <div>
             <h2 className="font-display text-3xl font-extrabold tracking-tight">See the line running</h2>
-            <p className="mt-2 opacity-85">A 2-minute guided demo on the real ORR map, with simulated data.</p>
+            <p className="mt-2 opacity-85">
+              A 2-minute guided demo on a real map of Bengaluru, then 7 lines to explore. Simulated data.
+            </p>
           </div>
           <Link href="/demo" className="rounded-xl bg-page px-5 py-3 font-bold text-fg">
             Try the demo
