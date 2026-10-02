@@ -128,3 +128,101 @@ body {
     transition: none !important;
   }
 }
+
+/* Map: route, stops and vehicles drawn with the same tokens as the app. */
+.leaflet-container {
+  background: var(--surface);
+  font-family: var(--font-figtree), system-ui, sans-serif;
+}
+.map-dark {
+  /* Night Line uses dark tiles even in light mode, so labels flip to light text. */
+  --page: #121816;
+  --surface: #1a2320;
+  --fg: #e9efec;
+  --muted: #9aa8a1;
+}
+.route-base {
+  stroke: var(--muted);
+  stroke-opacity: 0.35;
+}
+.route-mine {
+  stroke: var(--accent);
+  stroke-opacity: 0.45;
+}
+.route-done {
+  stroke: var(--accent);
+  stroke-opacity: 1;
+}
+.stop-marker {
+  position: relative;
+}
+.stop-dot {
+  display: block;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--page);
+  border: 3px solid var(--fg);
+}
+.stop-dot.me {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 5px var(--accent-soft);
+}
+.stop-name {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  white-space: nowrap;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--fg);
+  text-shadow:
+    0 0 3px var(--page),
+    0 0 3px var(--page),
+    0 0 3px var(--page);
+}
+.stop-name.above {
+  bottom: 18px;
+}
+.stop-name.below {
+  top: 18px;
+}
+.stop-name.me {
+  font-weight: 800;
+}
+.veh-marker {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.5s linear;
+}
+.leaflet-zoom-anim .veh-marker {
+  transition: none;
+}
+.veh {
+  display: block;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 3px solid var(--page);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35);
+}
+.veh-auto {
+  background: var(--auto);
+}
+.veh-car {
+  background: var(--car);
+}
+.veh-bus {
+  background: var(--bus);
+  border-radius: 5px;
+}
+.veh-mine {
+  width: 20px;
+  height: 20px;
+  outline: 3px solid var(--accent);
+  outline-offset: 1px;
+}
+.veh-dim {
+  opacity: 0.3;
+}

@@ -1,6 +1,6 @@
 import { LAST_STOP, LINE, LINE_LENGTH_KM, STOPS } from "./line";
 import { Rng } from "./rng";
-import type { Filter, SimEvent, SimEventKind, Vehicle, VehicleType, World } from "./types";
+import type { Filter, Metrics, SimEvent, SimEventKind, Vehicle, VehicleType, World } from "./types";
 
 export const TYPES: Record<VehicleType, { label: string; fare: number; capacity: number }> = {
   auto: { label: "Auto", fare: 50, capacity: 3 },
@@ -16,6 +16,8 @@ export const HEADWAY_MIN = { day: 4, night: 8 };
 export const SIM_MIN_PER_REAL_SEC = 0.1;
 export const DAY_START = 8 * 60 + 24;
 export const NIGHT_START = 21 * 60 + 40;
+const DAY_SERVICE_START = 6 * 60;
+const NIGHT_SERVICE_START = 20 * 60;
 export const SEED = 20351004;
 
 // Riders turning up per simulated minute at each stop, and the chance each
@@ -81,7 +83,6 @@ function makeVehicle(
     lastStop: lastStopAt(posKm),
     dwellLeft: 0,
     holdLeft: 0,
-    delayLeft: 0,
     traffic: rng.range(0.9, 1.1),
     standby,
   };
@@ -92,7 +93,30 @@ function pushEvent(w: World, kind: SimEventKind, text: string, vehicleId?: numbe
   w.events = [...w.events.slice(-39), e];
 }
 
+function emptyMetrics(): Metrics {
+  return {
+    rides: 0,
+    ridesWait5: 0,
+    recentWaits: [],
+    fares: { auto: 0, car: 0, bus: 0 },
+    vehicleMinutes: { auto: 0, car: 0, bus: 0 },
+  };
+}
+
+/**
+ * A fresh line at 8:24 am (or 9:40 pm for Night Line). The counters are warmed
+ * up by running the same simulation from 6 am (or 8 pm), so the numbers on
+ * screen come from the model rather than being typed in.
+ */
 export function createWorld(night: boolean, seed = SEED): World {
+  const start = night ? NIGHT_START : DAY_START;
+  let warm = buildWorld(night, seed + 7, night ? NIGHT_SERVICE_START : DAY_SERVICE_START);
+  while (warm.t < start - 1e-9) warm = step(warm, Math.min(0.1, start - warm.t));
+  const w = buildWorld(night, seed, start);
+  return { ...w, metrics: warm.metrics, events: warm.events, nextEventId: warm.nextEventId };
+}
+
+function buildWorld(night: boolean, seed: number, t: number): World {
   const rng = new Rng(night ? seed + 1 : seed);
   const gap = headwayKm(night);
   const riderKm = STOPS[LINE.riderStop].km;
@@ -123,8 +147,6 @@ export function createWorld(night: boolean, seed = SEED): World {
   const queues = STOPS.map((_, i) =>
     Array.from({ length: rng.int(0, 2) * (i < LAST_STOP ? 1 : 0) }, () => -rng.range(0, 3)),
   );
-  const t = night ? NIGHT_START : DAY_START;
-
   return {
     night,
     t,
@@ -134,7 +156,7 @@ export function createWorld(night: boolean, seed = SEED): World {
     sinceSpawn: minKm / CRUISE_KM_PER_MIN,
     standbyCooldown: 0,
     queues: queues.map((q) => q.map((ago) => t + ago)),
-    metrics: { rides: 0, ridesWait5: 0, recentWaits: [], waitsByStop: STOPS.map(() => []) },
+    metrics: emptyMetrics(),
     events: [],
     nextEventId: 1,
   };
@@ -150,7 +172,6 @@ export function etaMin(v: Vehicle, stopIdx: number): number | null {
     (STOPS[stopIdx].km - v.posKm) / CRUISE_KM_PER_MIN +
     v.dwellLeft +
     v.holdLeft +
-    v.delayLeft +
     stopsBetween * DWELL_MIN
   );
 }
@@ -207,8 +228,7 @@ function serveStop(w: World, v: Vehicle, stopIdx: number, rng: Rng) {
     w.metrics.rides++;
     if (wait <= 5) w.metrics.ridesWait5++;
     w.metrics.recentWaits.push(wait);
-    w.metrics.waitsByStop[stopIdx].push(wait);
-    if (w.metrics.waitsByStop[stopIdx].length > WAIT_HISTORY / 4) w.metrics.waitsByStop[stopIdx].shift();
+    w.metrics.fares[v.type] += TYPES[v.type].fare;
   }
   if (w.metrics.recentWaits.length > WAIT_HISTORY) {
     w.metrics.recentWaits.splice(0, w.metrics.recentWaits.length - WAIT_HISTORY);
@@ -259,7 +279,8 @@ export function step(prev: World, dt: number): World {
     metrics: {
       ...prev.metrics,
       recentWaits: [...prev.metrics.recentWaits],
-      waitsByStop: prev.metrics.waitsByStop.map((q) => [...q]),
+      fares: { ...prev.metrics.fares },
+      vehicleMinutes: { ...prev.metrics.vehicleMinutes },
     },
     events: prev.events,
   };
@@ -272,12 +293,7 @@ export function step(prev: World, dt: number): World {
 
   for (const v of w.vehicles) {
     v.traffic = Math.min(1.2, Math.max(0.75, v.traffic + rng.range(-0.15, 0.15) * dt));
-
-    if (v.delayLeft > 0) {
-      v.delayLeft = Math.max(0, v.delayLeft - dt);
-      v.status = "delayed";
-      continue;
-    }
+    w.metrics.vehicleMinutes[v.type] += dt;
     if (v.dwellLeft > 0 || v.holdLeft > 0) {
       if (v.dwellLeft > 0) v.dwellLeft = Math.max(0, v.dwellLeft - dt);
       else v.holdLeft = Math.max(0, v.holdLeft - dt);

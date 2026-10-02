@@ -1,12 +1,7 @@
 export type VehicleType = "auto" | "car" | "bus";
 export type Filter = "all" | VehicleType;
 
-export type VehicleStatus =
-  | "approaching"
-  | "atStop"
-  | "full"
-  | "delayed"
-  | "standby";
+export type VehicleStatus = "approaching" | "atStop" | "full" | "standby";
 
 export interface Vehicle {
   id: number;
@@ -26,8 +21,6 @@ export interface Vehicle {
   dwellLeft: number;
   /** Extra minutes held back at a stop to keep gaps even. */
   holdLeft: number;
-  /** Minutes left stuck in a breakdown or jam. */
-  delayLeft: number;
   /** Traffic factor on cruise speed, drifts between 0.75 and 1.2. */
   traffic: number;
   /** Sent from standby to fill a gap. */
@@ -42,7 +35,7 @@ export interface Stop {
   lng: number;
 }
 
-export type SimEventKind = "hold" | "standby" | "delay" | "full" | "info";
+export type SimEventKind = "hold" | "standby";
 
 export interface SimEvent {
   id: number;
@@ -59,8 +52,10 @@ export interface Metrics {
   ridesWait5: number;
   /** Recent waits in simulated minutes (most recent last, capped). */
   recentWaits: number[];
-  /** Recent waits per stop, same order as STOPS. */
-  waitsByStop: number[][];
+  /** Fares collected, in rupees, by vehicle type. */
+  fares: Record<VehicleType, number>;
+  /** Simulated minutes vehicles of each type spent on the line. */
+  vehicleMinutes: Record<VehicleType, number>;
 }
 
 export interface World {

@@ -15,7 +15,13 @@ const figtree = Figtree({
   subsets: ["latin"],
 });
 
+// Vercel sets this at build time, so link previews point at the live site.
+const siteUrl = process.env.VERCEL_PROJECT_PRODUCTION_URL
+  ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`
+  : "http://localhost:3000";
+
 export const metadata: Metadata = {
+  metadataBase: new URL(siteUrl),
   title: {
     default: "Ola Hop · concept prototype",
     template: "%s · Ola Hop",

@@ -5,9 +5,8 @@ import { usePathname } from "next/navigation";
 import Wordmark from "./Wordmark";
 
 const LINKS = [
-  { href: "/rider", label: "Rider" },
-  { href: "/driver", label: "Driver" },
-  { href: "/ops", label: "Ops" },
+  { href: "/", label: "Overview" },
+  { href: "/demo", label: "Demo" },
 ];
 
 export default function Nav() {
@@ -15,14 +14,11 @@ export default function Nav() {
 
   return (
     <header className="px-4 pt-4">
-      <nav
-        aria-label="Main"
-        className="mx-auto flex max-w-6xl items-center justify-between gap-4"
-      >
-        <Link href="/" aria-label="Ola Hop home" className="rounded-md">
+      <nav aria-label="Main" className="mx-auto flex max-w-6xl items-center justify-between gap-4">
+        <Link href="/" aria-label="Ola Hop overview" className="rounded-md">
           <Wordmark />
         </Link>
-        <ul className="flex gap-1 rounded-xl bg-surface p-1 text-sm font-semibold">
+        <ul className="flex items-center gap-1 rounded-xl bg-surface p-1 text-sm font-semibold">
           {LINKS.map((l) => {
             const active = path === l.href;
             return (
@@ -39,6 +35,14 @@ export default function Nav() {
               </li>
             );
           })}
+          <li>
+            <a
+              href="/SreevaniGunda_Ola_APM.pdf"
+              className="block rounded-lg px-3 py-1.5 text-muted transition-colors hover:text-fg"
+            >
+              PRD
+            </a>
+          </li>
         </ul>
       </nav>
     </header>
