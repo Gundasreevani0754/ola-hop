@@ -2,7 +2,7 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 
 // Add the Loom link here once it is recorded; the button appears when it is set.
-const LOOM_URL = "";
+const LOOM_URL = "https://www.loom.com/share/60e69d653b2b440baa99c8d187d133fd";
 const PRD_URL = "/SreevaniGunda_Ola_APM.pdf";
 
 const EVIDENCE = [
@@ -114,7 +114,7 @@ export default function Home() {
             </a>
             {LOOM_URL && (
               <a href={LOOM_URL} className="rounded-xl border border-hair bg-page px-5 py-3 font-bold">
-                Watch the 1-minute video
+                Watch the walkthrough video
               </a>
             )}
           </div>
