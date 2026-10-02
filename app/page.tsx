@@ -7,9 +7,9 @@ const PRD_URL = "/SreevaniGunda_Ola_APM.pdf";
 
 const EVIDENCE = [
   {
-    stat: "37,000 of 44,000+",
-    text: "ride-hailing users had rides cancelled over their destination or digital payment.",
-    source: "LocalCircles via Zee News, Jan 2024",
+    stat: "84%",
+    text: "of 10,948 ride-hailing users who answered had rides cancelled over their destination or digital payment.",
+    source: "LocalCircles, 16 Jan 2024",
   },
   {
     stat: "900 of 1,800",
@@ -19,7 +19,7 @@ const EVIDENCE = [
   {
     stat: "2,100 a day",
     text: "new vehicles added in Bengaluru, which already has 1.2 crore registered.",
-    source: "Karnataka Transport Dept via News First Prime, 3 Apr 2026",
+    source: "RTO and Greater Bengaluru Authority records via News First Prime, 3 Apr 2026",
   },
 ];
 
@@ -46,9 +46,24 @@ const DECISION_RULE = [
 
 const WHY_OLA = [
   { title: "Its own maps", text: "Ola Maps, launched in 2024, to draw and run lines." },
-  { title: "Drivers already on board", text: "10 lakh+ drivers on its zero-commission subscription, with autos at the core." },
+  { title: "Drivers already on board", text: "A driver subscription Ola says 10 lakh+ drivers have joined, with autos at the core." },
   { title: "Hardware in the vehicle", text: "Ola Electric can build GPS and panic buttons into the vehicles themselves." },
-  { title: "A reason to move first", text: "Ola is third by monthly users, so it needs a new category, not a price war." },
+  { title: "Capital-light, when it counts", text: "Ola is third by monthly users and its consumer revenue fell 42% in FY25. Hop runs on vehicles and drivers it already has." },
+];
+
+const DIFFERENT = [
+  {
+    title: "Small vehicles, not buses",
+    text: "Ola Shuttle shut in 2018 and Uber closed its last Shuttle city in March 2026. Buses proved costly. Hop uses autos and cabs already on the road.",
+  },
+  {
+    title: "The rules have moved",
+    text: "The central aggregator guidelines now allow pooling, including women-only rides with women drivers (amended Dec 2025).",
+  },
+  {
+    title: "Permits first",
+    text: "Karnataka called Ola Share illegal in 2017 and still doesn't define pooling. The MVP waits for written approval, or starts in the first state that adopts the central rules. Buses join only through permit holders such as BMTC.",
+  },
 ];
 
 const ROADMAP = [
@@ -59,13 +74,20 @@ const ROADMAP = [
 ];
 
 const SOURCES = [
-  "LocalCircles survey, reported by Zee News, Jan 2024",
+  "LocalCircles taxi aggregator survey, 16 Jan 2024",
   "Citizen Matters, Sarjapur Road and ORR commuter survey, Jan 2024",
-  "Karnataka Transport Department, via News First Prime, 3 Apr 2026",
+  "RTO and Greater Bengaluru Authority records, via News First Prime, 3 Apr 2026",
   "Citizen Matters, HSR Layout feeder bus, Mar 2026",
   "Watkins et al., real-time bus information and wait times, 2011",
+  "Deccan Herald, Bengaluru auto fares from 1 Aug 2025",
+  "Inc42, Ola driver subscription at ₹67 a day, Jun 2025",
+  "MediaNama, Ola shuts Ola Shuttle, Feb 2018",
+  "Entrackr, Uber discontinues Shuttle in Delhi NCR, Mar 2026",
+  "The News Minute, Karnataka on Uber Pool and Ola Share, 2017",
+  "MoRTH Motor Vehicle Aggregator Guidelines, Jul 2025, amended Dec 2025",
+  "The Hans India, Namma Metro Blue Line timeline, 25 Aug 2026",
+  "The Tech Portal, Ola Consumer FY25 results, 7 May 2026",
   "MoHFW Technical Group, Population Projections 2011 to 2036, 2020",
-  "MoRTH Motor Vehicle Aggregator Guidelines, 2025",
 ];
 
 export default function Home() {
@@ -163,9 +185,35 @@ export default function Home() {
           ))}
         </ol>
         <p className="mt-6 max-w-3xl leading-relaxed text-muted">
-          Why ₹50 for an auto: a full auto carries 3 riders and earns ₹150, about one solo fare,
-          while each rider pays a third. Only Ola-partnered drivers with an Ola-installed GPS unit
-          and panic button run a line.
+          Only Ola-partnered drivers with an Ola-installed GPS unit and panic button run a line.
+        </p>
+      </Section>
+
+      {/* Driver economics */}
+      <Section label="Unit economics" title="Do drivers earn more? Only if seats stay full.">
+        <div className="grid gap-4 md:grid-cols-2">
+          <div className="rounded-3xl bg-page p-6 sm:p-8">
+            <p className="label">Solo auto, by meter</p>
+            <p className="tabular mt-2 font-display text-4xl font-extrabold tracking-tight">About ₹215 an hour</p>
+            <p className="mt-3 leading-relaxed text-muted">
+              A 9 km trip pays ₹162 (₹36 + ₹18 a km since Aug 2025) and takes about 45 minutes with
+              the drive to the next rider.
+            </p>
+          </div>
+          <div className="rounded-3xl bg-accent-soft p-6 sm:p-8">
+            <p className="label">Hop auto on L3</p>
+            <p className="tabular mt-2 font-display text-4xl font-extrabold tracking-tight">₹180 to ₹215 an hour</p>
+            <p className="mt-3 leading-relaxed">
+              An 11 km run takes about 42 minutes. ₹215 with 3 riders, ₹180 with 2.5, more only when
+              seats are resold at stops.
+            </p>
+          </div>
+        </div>
+        <p className="mt-6 max-w-3xl leading-relaxed text-muted">
+          So seat fill, not price, decides supply. Paying riders per run is the first number to
+          watch; below 3, raise the auto fare to ₹60 or shorten the line. Ola earns the daily driver
+          subscription it already charges (₹67 a day), so fares go fully to drivers. At 30 lakh
+          drivers that is about ₹7,300 crore a year. These are my estimates, to be tested in the MVP.
         </p>
       </Section>
 
@@ -214,6 +262,18 @@ export default function Home() {
         </div>
       </Section>
 
+      {/* Why this time is different */}
+      <Section label="Ola has tried this before" title="Why this time is different">
+        <div className="grid gap-4 md:grid-cols-3">
+          {DIFFERENT.map((d) => (
+            <div key={d.title} className="rounded-3xl bg-page p-6">
+              <p className="font-display text-lg font-extrabold">{d.title}</p>
+              <p className="mt-2 text-[15px] leading-relaxed text-muted">{d.text}</p>
+            </div>
+          ))}
+        </div>
+      </Section>
+
       {/* MVP */}
       <Section label="The MVP" title="One line, twelve weeks">
         <div className="grid gap-4 lg:grid-cols-[1.1fr_1fr]">
@@ -221,7 +281,9 @@ export default function Home() {
             <p className="leading-relaxed text-muted">
               L3 on Bengaluru&apos;s Outer Ring Road, from Silk Board to Marathahalli, with Night
               Line in the evenings. About 40 Ola autos and cabs (12 with women drivers) and 5 partner
-              buses. The ORR has 8 to 10 lakh employees and no metro open yet.
+              buses. The ORR has 6 to 10 lakh employees and no metro until the Blue Line, expected in
+              2027. When it opens, L3 turns into feeder lines for its stations, which is Hop&apos;s
+              2035 role anyway.
             </p>
             <p className="label mt-8">North star</p>
             <p className="mt-2 font-display text-2xl font-extrabold leading-snug tracking-tight">
@@ -269,8 +331,10 @@ export default function Home() {
           ))}
         </ol>
         <p className="mt-6 max-w-3xl leading-relaxed text-muted">
-          10 crore is about 1 in 6 city residents in 2036. It needs about 30 lakh Ola autos and cabs
-          and 1 lakh partner buses. Supply is the part I am least sure of, which is why the pilot
+          10 crore is about 1 in 6 city residents in 2036. Riding about 4 days a week, that is 11.4
+          crore trips a day. 30 lakh autos and cabs doing 12 runs with about 3 riders give 10.8
+          crore, and 1 lakh partner buses add about 3 crore. It closes, but only if vehicles run
+          nearly full all day. Supply is the part I am least sure of, which is why the pilot
           measures driver earnings per hour.
         </p>
       </Section>
@@ -297,7 +361,7 @@ export default function Home() {
           ))}
         </ol>
         <p className="mt-3 text-xs text-muted">
-          Fares, fleet sizes and the growth path are my estimates. The full list of 20 sources is in
+          Fares, fleet sizes and the growth path are my estimates. The full list of 26 sources is in
           the PRD.
         </p>
       </section>
